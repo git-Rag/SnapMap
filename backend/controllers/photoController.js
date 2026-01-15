@@ -55,19 +55,18 @@ export const uploadPhoto = async (req, res) => {
     const imageUrl = await uploadToAzure(req.file.buffer, fileName);
     console.log("upload successful---URL:", imageUrl);
 
+    const caption = req.body.caption || '';
     const photo = await Photo.create({
       userId: user._id,
       clerkUserId: req.userId,
       imageUrl,
+      caption,
       location: { type: "Point", coordinates: [longitude, latitude] },
       timestamp: new Date(),
       eventId: null,
     });
 
-    console.log("✅ Single photo entry created in MongoDB:", {
-      id: photo._id,
-      url: photo.imageUrl
-    });
+    console.log("✅ Photo uploaded to MongoDB:", photo._id.toString());
     return res.status(201).json({
       status: "success",
       photoId: photo._id,
@@ -137,24 +136,23 @@ export const testUploadPhoto = async (req, res) => {
     const fileName = buildFileName(req.file.originalname, clerkUserId);
     const imageUrl = await uploadToAzure(req.file.buffer, fileName);
     console.log("Upload successful - URL:", imageUrl);
-
+    const caption = req.body.caption || '';
     const photo = await Photo.create({
       userId: user._id,
       clerkUserId,
       imageUrl,
+      caption,
       location: { type: "Point", coordinates: [longitude, latitude] },
       timestamp: new Date(),
       eventId: null,
     });
 
-    console.log("✅ TEST Single photo entry created in MongoDB:", {
-      id: photo._id,
-      url: photo.imageUrl
-    });
+    console.log("✅ TEST Photo uploaded to MongoDB:", photo._id.toString());
     return res.status(201).json({
       status: "success",
       photoId: photo._id,
       imageUrl: imageUrl,
+      caption: caption,
       message: "Test photo uploaded successfully",
     });
   } catch (error) {
@@ -166,7 +164,7 @@ export const testUploadPhoto = async (req, res) => {
 };
 
 
-
+// multiple uploads added here//
 
 export const uploadPhotos = async(req,res)=>{
   try{
@@ -189,35 +187,36 @@ export const uploadPhotos = async(req,res)=>{
       return res.status(404).json({ message: "User not registered" });
     }
 
-    const imageUrls = [];
+    const uploadedPhotos = [];
 
     for (const file of req.files) {
       const fileName = buildFileName(file.originalname, req.userId);
       const imageUrl = await uploadToAzure(file.buffer, fileName);
-      imageUrls.push(imageUrl);
+      
+      const caption = req.body.caption || '';
+      const photo = await Photo.create({
+        userId: user._id,
+        clerkUserId: req.userId,
+        imageUrl,
+        caption,
+        location: {
+          type: "Point",
+          coordinates: [longitude, latitude],
+        },
+        timestamp: new Date(),
+        eventId: null,
+      });
+
+      uploadedPhotos.push({
+        photoId: photo._id,
+        imageUrl,
+      });
     }
 
-    const photo = await Photo.create({
-      userId: user._id,
-      clerkUserId: req.userId,
-      imageUrl: imageUrls,
-      location: {
-        type: "Point",
-        coordinates: [longitude, latitude],
-      },
-      timestamp: new Date(),
-      eventId: null,
-    });
-
-    console.log("✅ Multi-photo entry created in MongoDB:", {
-      id: photo._id,
-      urls: photo.imageUrl
-    });
-
-    return res.status(201).json({
+        return res.status(201).json({
       status: "success",
-      photoId: photo._id,
-      urls: photo.imageUrl,
+      count: uploadedPhotos.length,
+      photos: uploadedPhotos,
     });
   } catch (error) {
     console.error("Upload multiple photos error:", error);
