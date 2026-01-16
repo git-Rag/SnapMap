@@ -27,7 +27,7 @@ export const uploadPhoto = async (req, res) => {
     );
     console.log("UserId:", req.userId);
 
-    const { lat, lon } = req.body || {};
+    const { lat, lon, caption } = req.body || {};
     const latitude = parseFloat(lat);
     const longitude = parseFloat(lon);
 
@@ -59,10 +59,12 @@ export const uploadPhoto = async (req, res) => {
       userId: user._id,
       clerkUserId: req.userId,
       imageUrl,
+      caption: caption || "",
       location: { type: "Point", coordinates: [longitude, latitude] },
       timestamp: new Date(),
       eventId: null,
     });
+    console.log("📝 Caption saved:", caption);
 
     console.log("✅ Single photo entry created in MongoDB:", {
       id: photo._id,
@@ -109,7 +111,7 @@ export const testUploadPhoto = async (req, res) => {
     console.log("Request body:", req.body);
     console.log("File info:", req.file ? { size: req.file.size, mimetype: req.file.mimetype } : "No file");
 
-    const { lat, lon, testUserId } = req.body || {};
+    const { lat, lon, caption, testUserId } = req.body || {};
     const latitude = parseFloat(lat);
     const longitude = parseFloat(lon);
     const clerkUserId = testUserId || "test-user-123"; // Use provided or default test user
@@ -142,10 +144,12 @@ export const testUploadPhoto = async (req, res) => {
       userId: user._id,
       clerkUserId,
       imageUrl,
+      caption: caption || "",
       location: { type: "Point", coordinates: [longitude, latitude] },
       timestamp: new Date(),
       eventId: null,
     });
+    console.log("📝 Caption saved:", caption);
 
     console.log("✅ TEST Single photo entry created in MongoDB:", {
       id: photo._id,
@@ -170,7 +174,7 @@ export const testUploadPhoto = async (req, res) => {
 
 export const uploadPhotos = async(req,res)=>{
   try{
-    const{lat,lon} = req.body || {};
+    const{lat,lon,caption} = req.body || {};
     const latitude = parseFloat(lat);
     const longitude = parseFloat(lon);
 
@@ -201,6 +205,7 @@ export const uploadPhotos = async(req,res)=>{
       userId: user._id,
       clerkUserId: req.userId,
       imageUrl: imageUrls,
+      caption: caption || "",
       location: {
         type: "Point",
         coordinates: [longitude, latitude],
@@ -208,6 +213,7 @@ export const uploadPhotos = async(req,res)=>{
       timestamp: new Date(),
       eventId: null,
     });
+    console.log("📝 Caption saved for multiple photos:", caption);
 
     console.log("✅ Multi-photo entry created in MongoDB:", {
       id: photo._id,
