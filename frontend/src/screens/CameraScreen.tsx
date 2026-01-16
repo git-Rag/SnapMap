@@ -13,6 +13,18 @@ import {
 import type { ScreenProps } from "../types";
 import CameraStyle from "../styles/CameraStyle";
 
+
+const exifToDecimal = (
+  dms: number[],
+  ref: "N" | "S" | "E" | "W"
+) => {
+  const [d, m, s] = dms;
+  let dec = d + m / 60 + s / 3600;
+  if (ref === "S" || ref === "W") dec *= -1;
+  return dec;
+};
+
+
 const styles = CameraStyle;
 export default function CameraScreen({
   navigation,
@@ -80,89 +92,72 @@ export default function CameraScreen({
   };
 
   const handletheCapture = async () => {
-    if (!cameraRef.current || !isCameraOk) {
-      return;
-    }
-
-    const photo = await cameraRef.current.takePictureAsync();
-    let location = null;
-    const permissionStatus = await ensureLocationPermission();
-
-    if (permissionStatus === "granted") {
-      const servicesEnabled = await Location.hasServicesEnabledAsync();
-      if (!servicesEnabled) {
-        Alert.alert(
-          "Location off",
-          "Enable location services to add location data."
-        );
-      } else {
-        try {
-          location = await Location.getCurrentPositionAsync({});
-        } catch (error) {
-          Alert.alert("Location error", "Unable to fetch your location.");
-        }
-      }
-    }
-
-    navigation.navigate("UploadConfirmationScreen", {
-      photo,
-      location,
-    });
-  };
-
-  const handleGalleryPick = async () => {
-    // Request media library permissions
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission needed",
-        "We need gallery access to select photos."
-      );
-      return;
-    }
-
-    // Launch image picker
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: false,
+    if (!cameraRef.current || !isCameraOk) return;
+  
+    // ✅ Capture image WITH exif (still not GPS-reliable)
+    const photo = await cameraRef.current.takePictureAsync({
       quality: 1,
+      exif: true,
     });
-
-    if (result.canceled) {
-      return;
-    }
-
-    // Get location for gallery photo
+  
+    // ✅ Location handled separately (correct)
     let location = null;
     const permissionStatus = await ensureLocationPermission();
-
     if (permissionStatus === "granted") {
-      const servicesEnabled = await Location.hasServicesEnabledAsync();
-      if (!servicesEnabled) {
-        Alert.alert(
-          "Location off",
-          "Enable location services to add location data."
-        );
-      } else {
-        try {
-          location = await Location.getCurrentPositionAsync({});
-        } catch (error) {
-          Alert.alert("Location error", "Unable to fetch your location.");
-        }
-      }
+      location = await Location.getCurrentPositionAsync({});
     }
-
-    // Navigate to confirmation screen with gallery photo
+  
+    // ✅ Go DIRECTLY to confirmation screen
     navigation.navigate("UploadConfirmationScreen", {
       photo: {
-        uri: result.assets[0].uri,
-        width: result.assets[0].width,
-        height: result.assets[0].height,
-      } as any,
+        uri: photo.uri,
+        width: photo.width,
+        height: photo.height,
+        format: "jpg",
+        exif: photo.exif, // ⚠️ partial EXIF (expected)
+      },
       location,
     });
   };
+  
+
+  const handleGalleryPick = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Gallery access is required.");
+      return;
+    }
+  
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false, // ✅ edit later, not here
+      quality: 1,
+      exif: true,
+      selectionLimit: 1,
+    });
+  
+    if (result.canceled) return;
+  
+    let location = null;
+    const permissionStatus = await ensureLocationPermission();
+    if (permissionStatus === "granted") {
+      location = await Location.getCurrentPositionAsync({});
+    }
+  
+    const asset = result.assets[0];
+  
+    navigation.navigate("UploadConfirmationScreen", {
+      photo: {
+        uri: asset.uri,
+        width: asset.width!,
+        height: asset.height!,
+        format: "jpg",
+        exif: asset.exif, // ✅ full EXIF if present
+      },
+      location,
+    });
+  };
+  
 
   return (
   <View style={styles.container}>
@@ -171,6 +166,7 @@ export default function CameraScreen({
       style={styles.camera}
       facing={facing}
       flash={flash}
+      zoom={0}
       onCameraReady={() => setIsCameraOk(true)}
     />
 

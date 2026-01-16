@@ -2,6 +2,14 @@ import type { CameraCapturedPicture } from "expo-camera";
 import type { LocationObject } from "expo-location";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+type AppImage = {
+  uri: string;
+  width: number;
+  height: number;
+  format?: "jpg" | "jpeg" | "png"; // optional
+  exif?: Record<string, any>;
+};
+
 export type RootParamList = {
   SplashScreen: undefined;
   SignInScreen: undefined;
@@ -11,7 +19,7 @@ export type RootParamList = {
   CameraScreen: undefined;
   MapScreen: undefined;
   UploadConfirmationScreen:
-    | { photo?: CameraCapturedPicture; location?: LocationObject | null }
+    | { photo?: AppImage; location?: LocationObject | null }
     | undefined;
   BubbleDetailsScreen: undefined;
   EventGalleryScreen: undefined;

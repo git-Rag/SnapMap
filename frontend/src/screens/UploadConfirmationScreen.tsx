@@ -10,6 +10,7 @@ import {
 import Constants from "expo-constants";
 import { useAuth } from "@clerk/clerk-expo";
 import type { ScreenProps } from "../types";
+import * as ImagePicker from "expo-image-picker";
 import UploadConfirmationStyle from "../styles/UploadConfirmationStyle";
 
 const styles = UploadConfirmationStyle;
@@ -21,7 +22,8 @@ const UploadConfirmationScreen = ({
   navigation,
   route,
 }: ScreenProps<"UploadConfirmationScreen">) => {
-  const { photo, location } = route.params || {};
+  const { photo: initialPhoto, location } = route.params || {};
+  const [photo, setPhoto] = useState(initialPhoto);
   const { getToken } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
 
@@ -30,6 +32,30 @@ const UploadConfirmationScreen = ({
     navigation.goBack();
     return null;
   }
+
+  const handleEdit = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true, // ✅ system editor
+      quality: 1,
+      exif: true,
+      selectionLimit: 1,
+      uri: photo.uri, // edit current image
+    } as any);
+  
+    if (result.canceled) return;
+  
+    const asset = result.assets[0];
+  
+    setPhoto({
+      uri: asset.uri,
+      width: asset.width!,
+      height: asset.height!,
+      format: "jpg",
+      exif: asset.exif,
+    });
+  };
+  
 
   const handleUpload = async () => {
     if (!location?.coords) {
@@ -100,12 +126,21 @@ const UploadConfirmationScreen = ({
           <Text style={styles.locationText}>📍 Main Court</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.retakeIcon}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.retakeText}>⟳</Text>
-        </TouchableOpacity>
+        <View style={styles.imageActions}>
+  <TouchableOpacity
+    style={styles.retakeIcon}
+    onPress={() => navigation.goBack()}
+  >
+    <Text style={styles.retakeText}>⟳</Text>
+  </TouchableOpacity>
+
+  <TouchableOpacity
+    style={styles.editIcon}
+    onPress={handleEdit}
+  >
+    <Text style={styles.editText}>✏️</Text>
+  </TouchableOpacity>
+</View>
       </View>
 
       {/* Caption */}
@@ -130,7 +165,7 @@ const UploadConfirmationScreen = ({
       </TouchableOpacity>
 
       {/* Cancel */}
-      <TouchableOpacity onPress={() => navigation.goBack()}>
+      <TouchableOpacity onPress={() => navigation.navigate("HomeScreen")}>
         <Text style={styles.cancelText}>Cancel</Text>
       </TouchableOpacity>
     </View>
