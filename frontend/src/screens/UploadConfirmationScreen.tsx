@@ -13,6 +13,7 @@ import Constants from "expo-constants";
 import { useAuth } from "@clerk/clerk-expo";
 import type { ScreenProps } from "../types";
 import UploadConfirmationStyle from "../styles/UploadConfirmationStyle";
+import Toast from "../components/Toast";
 
 const styles = UploadConfirmationStyle;
 const { width } = Dimensions.get("window");
@@ -26,8 +27,11 @@ const UploadConfirmationScreen = ({
 }: ScreenProps<"UploadConfirmationScreen">) => {
   const { photo, photos, location } = route.params || {};
   const { getToken } = useAuth();
+
   const [isUploading, setIsUploading] = useState(false);
-  const [caption, setCaption] = useState('');
+  const [caption, setCaption] = useState("");
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [showErrorToast, setShowErrorToast] = useState(false);
 
   // Normalize input to an array of photos
   const photosToUpload = photos || (photo ? [photo] : []);
@@ -52,24 +56,12 @@ const UploadConfirmationScreen = ({
       if (!token) throw new Error("Auth error");
 
       const form = new FormData();
-
       const isMultiple = photosToUpload.length > 1;
+
       const endpoint = isMultiple
         ? `${API_BASE_URL}/api/v1/photos/upload-photos`
         : `${API_BASE_URL}/api/v1/photos/upload-photo`;
-      console.log("PHOTO UPLOAD DETAILS");
-      console.log("Total photos:", photosToUpload.length);
-      console.log("Caption:", caption);
-      console.log("Latitude:", location.coords.latitude);
-      console.log("Longitude:", location.coords.longitude);
-      console.log("Endpoint:", endpoint);
 
-      photosToUpload.forEach((p, index) => {
-        console.log(`Photo ${index + 1}`);
-        console.log("uri:", p.uri);
-        console.log("name:", "snap.jpg");
-        console.log("type:", "image/jpeg");
-      });
       if (isMultiple) {
         photosToUpload.forEach((p) => {
           form.append("photos[]", {
@@ -90,28 +82,23 @@ const UploadConfirmationScreen = ({
       form.append("lon", String(location.coords.longitude));
       form.append("caption", caption);
 
-      console.log(`Uploading ${photosToUpload.length} photos to ${endpoint}`);
-
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          // 'Content-Type': 'multipart/form-data', // Usually handled automatically by fetch with FormData
         },
         body: form,
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.log("Upload error:", errorText);
         throw new Error("Upload failed");
       }
 
-      Alert.alert("Success", `${photosToUpload.length} photo(s) uploaded!`, [
-        { text: "OK", onPress: () => navigation.navigate("HomeScreen") },
-      ]);
-    } catch (error: any) {
-      Alert.alert("Upload failed", error.message);
+      // Show success toast instead of alert
+      setShowSuccessToast(true);
+    } catch (error) {
+      // Show error toast instead of alert
+      setShowErrorToast(true);
     } finally {
       setIsUploading(false);
     }
@@ -135,30 +122,27 @@ const UploadConfirmationScreen = ({
           contentContainerStyle={{ alignItems: "center" }}
         >
           {photosToUpload.map((p, index) => (
-            <React.Fragment key={index}>
-              <View
-                style={[
-                  styles.imageCard,
-                  { width: width - 40, marginHorizontal: 20 },
-                ]}
-              >
-                <Image source={{ uri: p.uri }} style={styles.previewImage} />
+            <View
+              key={index}
+              style={[
+                styles.imageCard,
+                { width: width - 40, marginHorizontal: 20 },
+              ]}
+            >
+              <Image source={{ uri: p.uri }} style={styles.previewImage} />
 
-                <View style={styles.locationBadge}>
-                  <Text style={styles.locationText}>
-                    📍{" "}
-                    {photosToUpload.length > 1
-                      ? `Photo ${index + 1}/${photosToUpload.length}`
-                      : "Main Court"}
-                  </Text>
-                </View>
+              <View style={styles.locationBadge}>
+                <Text style={styles.locationText}>
+                  {photosToUpload.length > 1
+                    ? `Photo ${index + 1}/${photosToUpload.length}`
+                    : "Main Court"}
+                </Text>
               </View>
-            </React.Fragment>
+            </View>
           ))}
         </ScrollView>
       </View>
 
-      {/* Caption (Shared for now) */}
       <View style={styles.captionBox}>
         <TextInput
           placeholder="Write a caption..."
@@ -170,7 +154,6 @@ const UploadConfirmationScreen = ({
         <Text style={styles.emoji}>🙂</Text>
       </View>
 
-      {/* Add Photo Button */}
       <TouchableOpacity
         style={styles.primaryButton}
         onPress={handleUpload}
@@ -185,10 +168,26 @@ const UploadConfirmationScreen = ({
         </Text>
       </TouchableOpacity>
 
-      {/* Cancel */}
       <TouchableOpacity onPress={() => navigation.goBack()}>
         <Text style={styles.cancelText}>Cancel</Text>
       </TouchableOpacity>
+
+      {/* Success toast */}
+      <Toast
+        visible={showSuccessToast}
+        message="Photo uploaded successfully"
+        onHide={() => {
+          setShowSuccessToast(false);
+          navigation.navigate("HomeScreen");
+        }}
+      />
+
+      {/* Error toast */}
+      <Toast
+        visible={showErrorToast}
+        message="Upload failed"
+        onHide={() => setShowErrorToast(false)}
+      />
     </View>
   );
 };

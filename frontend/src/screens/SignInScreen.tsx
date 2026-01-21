@@ -5,6 +5,7 @@ import * as WebBrowser from "expo-web-browser";
 import type { ScreenProps } from "../types";
 import SignInStyle from "../styles/SignInStyle";
 import { Ionicons } from "@expo/vector-icons";
+import Toast from "../components/Toast";
 
 const styles = SignInStyle;
 
@@ -16,6 +17,7 @@ const SignInScreen = ({ navigation }: ScreenProps<"SignInScreen">) => {
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
 
   const [loading, setLoading] = useState(false);
+  const [showErrorToast, setShowErrorToast] = useState(false);
 
   // Redirect when signed in
   useEffect(() => {
@@ -34,10 +36,11 @@ const SignInScreen = ({ navigation }: ScreenProps<"SignInScreen">) => {
 
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
-        // navigation handled by useEffect
+        // Navigation handled by useEffect
       }
     } catch (err) {
       console.error("Sign in error:", err);
+      setShowErrorToast(true);
     } finally {
       setLoading(false);
     }
@@ -46,20 +49,16 @@ const SignInScreen = ({ navigation }: ScreenProps<"SignInScreen">) => {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        {/* Icon */}
         <View style={styles.iconWrapper}>
           <Ionicons name="location-outline" size={28} color="#FFFFFF" />
         </View>
 
-        {/* Title */}
         <Text style={styles.title}>SnapMap</Text>
 
-        {/* Subtitle */}
         <Text style={styles.subtitle}>
           See what's happening on campus
         </Text>
 
-        {/* Button */}
         <TouchableOpacity
           style={styles.googleButton}
           onPress={onSignInWithGoogle}
@@ -75,6 +74,13 @@ const SignInScreen = ({ navigation }: ScreenProps<"SignInScreen">) => {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Error toast */}
+      <Toast
+        visible={showErrorToast}
+        message="Sign in failed. Please try again."
+        onHide={() => setShowErrorToast(false)}
+      />
     </View>
   );
 };
