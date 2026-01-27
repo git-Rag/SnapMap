@@ -95,6 +95,15 @@ export default function CameraScreen({
     const permissionStatus = await ensureLocationPermission();
 
     if (permissionStatus === "granted") {
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        Alert.alert(
+          "Location off",
+          "Enable location services to add location data."
+        );
+        return;
+      }
+
       try {
         const location = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
@@ -105,7 +114,7 @@ export default function CameraScreen({
           location,
         });
       } catch (err) {
-        Alert.alert(err);
+        Alert.alert("Location error", "Unable to fetch your location.");
       }
     }
   };
